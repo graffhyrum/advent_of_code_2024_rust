@@ -67,7 +67,7 @@ impl Map {
             .map(|trailhead| trailhead.score)
             .sum()
     }
-    
+
     fn rating(&self) -> u32 {
         self.trailheads
             .iter()
@@ -82,21 +82,29 @@ struct Trailhead {
 }
 
 impl Trailhead {
-    fn new(coordinate: &Coordinate, map: &[Vec<u8>]) -> Self {
-        let trails = get_trails(coordinate, map);
-        let rating = get_rating(&coordinate, map);
-        Self { score: trails.len() as u32, rating }
+    fn new(origin: &Coordinate, map: &[Vec<u8>]) -> Self {
+        let score = get_score(origin, map);
+        let rating = get_rating(origin, map);
+        Self {
+            score,
+            rating,
+        }
     }
 }
 
-fn get_trails(coordinate: &Coordinate, map: &[Vec<u8>]) -> Vec<Trail> {
+// the score is the number of 9s reachable from the trailhead
+fn get_score(origin: &Coordinate, map: &[Vec<u8>]) -> u32 {
     let mut trails = vec![];
     let mut visited = vec![vec![false; map[0].len()]; map.len()];
-    let mut stack = vec![(coordinate.clone(), vec![])];
+    let mut stack = vec![(origin.clone(), vec![])];
 
     while let Some((current, trail)) = stack.pop() {
         // boundary check
-        if current.y < 0 || current.y >= map.len() as i32 || current.x < 0 || current.x >= map[0].len() as i32 {
+        if current.y < 0
+            || current.y >= map.len() as i32
+            || current.x < 0
+            || current.x >= map[0].len() as i32
+        {
             continue;
         }
 
@@ -119,69 +127,66 @@ fn get_trails(coordinate: &Coordinate, map: &[Vec<u8>]) -> Vec<Trail> {
             let new_x = current.x + dx;
             let new_y = current.y + dy;
 
-            // boundary check for new coordinates
+            // boundary check for new origins
             if new_y < 0 || new_y >= map.len() as i32 || new_x < 0 || new_x >= map[0].len() as i32 {
                 continue;
             }
 
             // check if the neighboring cell is 1 higher than the current cell
-            if map[new_y as usize][new_x as usize] == map[current.y as usize][current.x as usize] + 1 {
-            let mut new_trail = trail.clone();
-            new_trail.push((current.clone(), direction.clone()));
-            stack.push((
-                Coordinate {
-                        x: new_x,
-                        y: new_y,
-                },
-                new_trail,
-            ));
+            if map[new_y as usize][new_x as usize]
+                == map[current.y as usize][current.x as usize] + 1
+            {
+                let mut new_trail = trail.clone();
+                new_trail.push((current.clone(), direction.clone()));
+                stack.push((Coordinate { x: new_x, y: new_y }, new_trail));
+            }
         }
     }
-    }
-    trails
+    trails.len() as u32
 }
 
-
-// the rating is the number of distinct trails from the trailhead
-fn get_rating(coordinate: &Coordinate, map: &[Vec<u8>]) -> u32 {
-    let mut visited = vec![vec![false; map[0].len()]; map.len()];
-    let mut stack = vec![coordinate.clone()];
-
-    while let Some(current) = stack.pop() {
+// the rating is the number of distinct trails from the trailhead to each 9
+fn get_rating(origin: &Coordinate, map: &[Vec<u8>]) -> u32 {
+    let mut rating = 0;
+    // from the origin, find all paths to 9s
+    let mut stack = vec![origin.clone()];
+    while let Some(current )= stack.pop() {
         // boundary check
-        if current.y < 0 || current.y >= map.len() as i32 || current.x < 0 || current.x >= map[0].len() as i32 {
+        if current.y < 0
+            || current.y >= map.len() as i32
+            || current.x < 0
+            || current.x >= map[0].len() as i32
+        {
             continue;
         }
-
-        if visited[current.y as usize][current.x as usize] {
+        // destination check
+        if map[current.y as usize][current.x as usize] == 9 {
+            rating += 1;
             continue;
         }
-        visited[current.y as usize][current.x as usize] = true;
-
-        for (dx, dy) in &[
-            (0, -1),
-            (0, 1),
-            (1, 0),
-            (-1, 0),
+        for (dx, dy, _) in &[
+            (0, -1, Direction::North),
+            (0, 1, Direction::South),
+            (1, 0, Direction::East),
+            (-1, 0, Direction::West),
         ] {
             let new_x = current.x + dx;
             let new_y = current.y + dy;
 
-            // boundary check for new coordinates
+            // boundary check for new origins
             if new_y < 0 || new_y >= map.len() as i32 || new_x < 0 || new_x >= map[0].len() as i32 {
                 continue;
             }
 
             // check if the neighboring cell is 1 higher than the current cell
-            if map[new_y as usize][new_x as usize] == map[current.y as usize][current.x as usize] + 1 {
-                stack.push(Coordinate {
-                    x: new_x,
-                    y: new_y,
-                });
+            if map[new_y as usize][new_x as usize]
+                == map[current.y as usize][current.x as usize] + 1
+            {
+                stack.push(Coordinate { x: new_x, y: new_y });
             }
         }
     }
-    visited.iter().flatten().filter(|&&v| v).count() as u32
+    rating
 }
 
 type Trail = Vec<Move>;
