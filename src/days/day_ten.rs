@@ -85,10 +85,7 @@ impl Trailhead {
     fn new(origin: &Coordinate, map: &[Vec<u8>]) -> Self {
         let score = get_score(origin, map);
         let rating = get_rating(origin, map);
-        Self {
-            score,
-            rating,
-        }
+        Self { score, rating }
     }
 }
 
@@ -150,7 +147,7 @@ fn get_rating(origin: &Coordinate, map: &[Vec<u8>]) -> u32 {
     let mut rating = 0;
     // from the origin, find all paths to 9s
     let mut stack = vec![origin.clone()];
-    while let Some(current )= stack.pop() {
+    while let Some(current) = stack.pop() {
         // boundary check
         if current.y < 0
             || current.y >= map.len() as i32
@@ -189,8 +186,6 @@ fn get_rating(origin: &Coordinate, map: &[Vec<u8>]) -> u32 {
     rating
 }
 
-type Trail = Vec<Move>;
-type Move = (Coordinate, Direction);
 #[derive(Clone)]
 struct Coordinate {
     x: i32,
