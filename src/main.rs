@@ -33,6 +33,21 @@ fn main() {
 fn day_to_problem(day: usize) -> Option<Box<dyn Problem>> {
     match day {
         10 => Some(Box::new(days::DayTen)),
+        11 => Some(Box::new(days::DayEleven)),
+        12 => Some(Box::new(days::DayTwelve)),
+        13 => Some(Box::new(days::DayThirteen)),
+        14 => Some(Box::new(days::DayFourteen)),
+        15 => Some(Box::new(days::DayFifteen)),
+        16 => Some(Box::new(days::DaySixteen)),
+        17 => Some(Box::new(days::DaySeventeen)),
+        18 => Some(Box::new(days::DayEighteen)),
+        19 => Some(Box::new(days::DayNineteen)),
+        20 => Some(Box::new(days::DayTwenty)),
+        21 => Some(Box::new(days::DayTwentyOne)),
+        22 => Some(Box::new(days::DayTwentyTwo)),
+        23 => Some(Box::new(days::DayTwentyThree)),
+        24 => Some(Box::new(days::DayTwentyFour)),
+        25 => Some(Box::new(days::DayTwentyFive)),
         _ => None,
     }
 }
