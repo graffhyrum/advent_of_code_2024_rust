@@ -1,8 +1,8 @@
 use crate::problems::Problem;
 
-pub struct DayTwelve;
+pub struct DayThree;
 
-impl Problem for DayTwelve {
+impl Problem for DayThree {
     fn part_one(&self, input: &str) -> String {
         input.to_string()
     }
