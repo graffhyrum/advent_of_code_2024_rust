@@ -22,9 +22,11 @@ impl DayTwelve {
     }
 }
 
+type Regions = HashMap<(char, Point), Vec<GardenCell>>;
+
 #[derive(Debug)]
 struct Garden {
-    plots: HashMap<(char, Point), Vec<GardenCell>>,
+    regions: Regions,
 }
 
 impl Garden {
@@ -32,54 +34,49 @@ impl Garden {
         let map: Vec<Vec<char>> = input.lines().map(|line| line.chars().collect()).collect();
 
         let mut visited: HashSet<Point> = HashSet::new();
-        let mut plots = HashMap::new();
+        let mut regions = HashMap::new();
 
         for (y, row) in map.iter().enumerate() {
             for (x, plant_type) in row.iter().enumerate() {
-                if visited.contains(&Point { x, y }) {
-                    continue;
-                }
-                let plot_key = (*plant_type, Point { x, y });
-                let mut plot = Vec::new();
-
-                let mut stack: Vec<Point> = vec![Point { x, y }];
-                // check each direction
-                while let Some(point) = stack.pop() {
-                    if visited.contains(&point) {
+                let point = Point { x, y };
+                let mut region_cells = vec![];
+                // bfs to find all cells in the region,
+                let mut queue = vec![point];
+                while let Some(current) = queue.pop() {
+                    if visited.contains(&current) {
                         continue;
                     }
-                    visited.insert(point.clone());
-
+                    visited.insert(current);
                     let mut fences = 0;
-                    let directions: [(isize, isize); 4] = [(0, 1), (1, 0), (0, -1), (-1, 0)];
-                    for (x_offset, y_offset) in directions.iter() {
-                        if let Some(neighbour) = check_bounds(
-                            map[0].len(),
+                    for (dx, dy) in &[(0, 1), (1, 0), (0, -1), (-1, 0)] {
+                        if let Some(next) = check_bounds(
+                            row.len(),
                             map.len(),
-                            x as isize + x_offset,
-                            y as isize + y_offset,
+                            current.x as isize + dx,
+                            current.y as isize + dy,
                         ) {
-                            if map[neighbour.y][neighbour.x] == *plant_type {
-                                stack.push(neighbour);
+                            if map[next.y][next.x] == *plant_type {
+                                queue.push(next);
                             } else {
-                                fences += 1;
+                                fences += 1; // edge of region
                             }
                         } else {
-                            fences += 1;
+                            fences += 1; // out of bounds
                         }
                     }
-                    plot.push(GardenCell::new(point.x, point.y, fences));
+                    region_cells.push(GardenCell {
+                        point: current,
+                        fences,
+                    });
                 }
-                if !plot.is_empty() {
-                    plots.insert(plot_key, plot);
-                }
+                regions.insert((*plant_type, point), region_cells);
             }
         }
-        Garden { plots }
+        Garden { regions }
     }
     fn score_plots(&self) -> usize {
         let mut score = 0;
-        for (_plant_type, plot) in self.plots.iter() {
+        for (_plant_type, plot) in self.regions.iter() {
             let mut area = 0;
             let mut circumference = 0;
             for cell in plot.iter() {
@@ -103,30 +100,16 @@ fn check_bounds(width: usize, height: usize, x: isize, y: isize) -> Option<Point
     }
 }
 
-// type VisitedKey = (char, Coordinate);
-
-#[derive(Hash, Eq, PartialEq, Clone, Debug)]
+#[derive(Hash, Eq, PartialEq, Clone, Copy, Debug)]
 struct Point {
     x: usize,
     y: usize,
 }
 
-#[derive(Hash, Eq, PartialEq, Clone, Debug)]
+#[derive(Hash, Eq, PartialEq, Clone, Copy, Debug)]
 struct GardenCell {
     point: Point,
     fences: u8,
-}
-
-impl GardenCell {
-    fn new(x: impl Into<usize>, y: impl Into<usize>, fences: u8) -> Self {
-        GardenCell {
-            point: Point {
-                x: x.into(),
-                y: y.into(),
-            },
-            fences,
-        }
-    }
 }
 
 #[cfg(test)]
@@ -147,6 +130,11 @@ MIIIIIJJEE
 MIIISIJEEE
 MMMISSJEEE"#;
 
-        assert_eq!(day.part_one(input), "1930", "Part one failed: {:?}", Garden::new(input));
+        assert_eq!(
+            day.part_one(input),
+            "1930",
+            "Part one failed: {:?}",
+            Garden::new(input)
+        );
     }
 }
