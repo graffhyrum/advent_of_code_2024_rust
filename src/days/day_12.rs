@@ -1,115 +1,106 @@
 use crate::problems::Problem;
-use std::collections::{HashMap, HashSet};
+use crate::util::Point;
+use std::collections::HashSet;
 
 pub struct DayTwelve;
 
 impl Problem for DayTwelve {
     fn part_one(&self, input: &str) -> String {
-        self.solve(input)
+        get_regions(input)
+            .iter()
+            .map(|region| region.area * region.perimeter)
+            .sum::<u32>()
+            .to_string()
     }
 
     fn part_two(&self, input: &str) -> String {
-        "Not implemented".to_string()
+        get_regions(input)
+            .iter()
+            .map(|region| region.area * region.sides())
+            .sum::<u32>()
+            .to_string()
     }
 }
 
-impl DayTwelve {
-    fn solve(&self, input: &str) -> String {
-        // build garden
-        let garden = Garden::new(input);
-        // score plots
-        garden.score_plots().to_string()
-    }
-}
+fn get_regions(input: &str) -> Vec<Region> {
+    let grid: Vec<&[u8]> = input.lines().map(|line| line.as_bytes()).collect();
+    let mut visited = HashSet::new();
+    let mut regions = Vec::new();
 
-type Regions = HashMap<(char, Point), Vec<GardenCell>>;
+    for (y, row) in grid.iter().enumerate() {
+        for (x, &plant) in row.iter().enumerate() {
+            let point = Point::new(x as i32, y as i32);
 
-#[derive(Debug)]
-struct Garden {
-    regions: Regions,
-}
-
-impl Garden {
-    fn new(input: &str) -> Self {
-        let map: Vec<Vec<char>> = input.lines().map(|line| line.chars().collect()).collect();
-
-        let mut visited: HashSet<Point> = HashSet::new();
-        let mut regions = HashMap::new();
-
-        for (y, row) in map.iter().enumerate() {
-            for (x, plant_type) in row.iter().enumerate() {
-                let point = Point { x, y };
-                let mut region_cells = vec![];
-                // bfs to find all cells in the region,
-                let mut queue = vec![point];
-                while let Some(current) = queue.pop() {
-                    if visited.contains(&current) {
-                        continue;
-                    }
-                    visited.insert(current);
-                    let mut fences = 0;
-                    for (dx, dy) in &[(0, 1), (1, 0), (0, -1), (-1, 0)] {
-                        if let Some(next) = check_bounds(
-                            row.len(),
-                            map.len(),
-                            current.x as isize + dx,
-                            current.y as isize + dy,
-                        ) {
-                            if map[next.y][next.x] == *plant_type {
-                                queue.push(next);
-                            } else {
-                                fences += 1; // edge of region
-                            }
-                        } else {
-                            fences += 1; // out of bounds
-                        }
-                    }
-                    region_cells.push(GardenCell {
-                        point: current,
-                        fences,
-                    });
-                }
-                regions.insert((*plant_type, point), region_cells);
+            if !visited.contains(&point) {
+                let mut region = Region::default();
+                find_region(&grid, &mut visited, &mut region, point, plant);
+                regions.push(region);
             }
         }
-        Garden { regions }
     }
-    fn score_plots(&self) -> usize {
-        let mut score = 0;
-        for (_plant_type, plot) in self.regions.iter() {
-            let mut area = 0;
-            let mut circumference = 0;
-            for cell in plot.iter() {
-                area += 1;
-                circumference += cell.fences as usize;
-            }
-            score += area * circumference;
-        }
-        score
-    }
+    regions
 }
-
-fn check_bounds(width: usize, height: usize, x: isize, y: isize) -> Option<Point> {
-    if x >= 0 && x < width as isize && y >= 0 && y < height as isize {
-        Some(Point {
-            x: x as usize,
-            y: y as usize,
-        })
-    } else {
-        None
-    }
-}
-
-#[derive(Hash, Eq, PartialEq, Clone, Copy, Debug)]
-struct Point {
-    x: usize,
-    y: usize,
-}
-
-#[derive(Hash, Eq, PartialEq, Clone, Copy, Debug)]
-struct GardenCell {
+fn find_region(
+    grid: &[&[u8]],
+    visited: &mut HashSet<Point>,
+    region: &mut Region,
     point: Point,
-    fences: u8,
+    plant: u8,
+) -> bool {
+    if let Some(row) = grid.get(point.y as usize) {
+        if let Some(&char) = row.get(point.x as usize) {
+            if char == plant {
+                if visited.insert(point) {
+                region.area += 1;
+
+                for neighbor in Point::von_neumann() {
+                    if !find_region(grid, visited, region, point + neighbor, plant) {
+                        region.perimeter += 1;
+                        region.edges.insert(Edge(point, neighbor.into()));
+                    }
+                }
+                }
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+struct Edge(Point, u8);
+
+#[derive(Default)]
+struct Region {
+    area: u32,
+    perimeter: u32,
+    edges: HashSet<Edge>,
+}
+
+impl Region {
+    fn sides(&self) -> u32 {
+        let mut to_remove = HashSet::new();
+        let mut sorted: Vec<_> = self.edges.iter().collect();
+        sorted.sort();
+
+        for edge in sorted {
+            let sides = match edge.1 {
+                b'^' | b'v' => [Point::left(), Point::right()],
+                _ => [Point::up(), Point::down()],
+            }
+                .map(|point| Edge(edge.0 + point, edge.1));
+
+            if sides
+                .iter()
+                .any(|fence| self.edges.contains(fence) && !to_remove.contains(fence))
+            {
+                to_remove.insert(*edge);
+            }
+        }
+
+        (self.edges.len() - to_remove.len()) as u32
+    }
 }
 
 #[cfg(test)]
@@ -132,9 +123,24 @@ MMMISSJEEE"#;
 
         assert_eq!(
             day.part_one(input),
-            "1930",
-            "Part one failed: {:?}",
-            Garden::new(input)
+            "1930"
         );
+    }
+
+    #[test]
+    fn test_day_twelve_part_two() {
+        let day = DayTwelve {};
+        let input = r#"RRRRIICCFF
+RRRRIICCCF
+VVRRRCCFFF
+VVRCCCJFFF
+VVVVCJJCFE
+VVIVCCJJEE
+VVIIICJJEE
+MIIIIIJJEE
+MIIISIJEEE
+MMMISSJEEE"#;
+
+        assert_eq!(day.part_two(input), "1206");
     }
 }

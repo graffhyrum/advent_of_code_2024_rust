@@ -5,6 +5,7 @@ use std::path::Path;
 
 mod days;
 mod problems;
+mod util;
 
 fn main() {
     let matches = command!()

@@ -23,7 +23,7 @@ pub mod day_22;
 pub mod day_23;
 pub mod day_24;
 pub mod day_25;
-
+mod grid;
 
 pub use day_01::DayOne;
 pub use day_02::DayTwo;
